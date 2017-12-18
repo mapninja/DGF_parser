@@ -16,16 +16,21 @@ for multi_directory in multi_directory_list:
     multi_tiffs_list = fnmatch.filter((os.listdir(multi_directory)), '*.TIF')
     for multi_tiff_name in multi_tiffs_list:
         print(multi_tiff_name)
+#Get the matching panchromatic image for the current multispectral by searching for the RowCol
         multi_rowcol_wildcard = '*'+multi_tiff_name[19:24]+'*'
         #print(multi_rowcol)
         pan_tiffs_list = fnmatch.filter((os.listdir(pan_directory)), '*.TIF')
         pan_tiff_name = fnmatch.filter(pan_tiffs_list, multi_rowcol_wildcard)
         #print(pan_tiff_name[0])
+#Pan-sharpen the multispectral using it's corresponding panchromatic image using JPEG compression and internal tiles
         print('pansharpen')
         os.system('python gdal_pansharpen.py -co NBITS=12 -co COMPRESS=JPEG -co JPEG_QUALITY=50 -co PHOTOMETRIC=YCBCR -co TILED=YES ' + os.path.join(pan_directory,pan_tiff_name[0]) + ' ' + os.path.join(multi_directory,multi_tiff_name) + ',band=7 ' + os.path.join(multi_directory,multi_tiff_name) + ',band=5 ' + os.path.join(multi_directory,multi_tiff_name) + ',band=3 ' + base_directory + '/sharp_' + multi_tiff_name)
+#Add overviews for resulting tiffs
         os.system('gdaladdo --config COMPRESS_OVERVIEW JPEG --config PHOTOMETRIC_OVERVIEW YCBCR --config INTERLEAVE_OVERVIEW PIXEL -r average ' + base_directory + '/sharp_' + multi_tiff_name + ' 2 4 8 16')
+#Create a Virtual Raster Mosaic of VRT type from all resulting sharpened TIFF images
 print('create VRT mosaic from SHARP images')
 os.system('gdalbuildvrt sharpmosaic.vrt *.TIF')
+#Haven't finished figuring out how to get a decently stretched image out of this part. More to do!
 print('MBtiles out')
 print('gdal_translate sharpmosaic.vrt sharpmosaic.mbtiles -of MBTILES')
 print('gdaladdo -r average sharpmosaic.mbtiles 2 4 8 16')
